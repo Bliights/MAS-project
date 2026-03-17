@@ -18,19 +18,45 @@ if TYPE_CHECKING:
 
 class Radioactivity(Agent):
     def __init__(self, model: Model, zone: type[Zone]) -> None:
-        super().__init__(model)
+        """
+        Initialize a radioactivity marker for a grid cell
 
+        Parameters
+        ----------
+        model : Model
+            The simulation model
+        zone : type[Zone]
+            The zone class defining the radioactivity range
+        """
+        super().__init__(model)
         self.zone = zone
         self.level = zone.random_radioactivity()
 
 
 class DisposalZone(Agent):
     def __init__(self, model: Model) -> None:
+        """
+        Initialize a disposal zone
+
+        Parameters
+        ----------
+        model : Model
+            The simulation model
+        """
         super().__init__(model)
 
 
 class Waste(Agent):
     def __init__(self, model: Model, waste_type: WasteType) -> None:
-        super().__init__(model)
+        """
+        Initialize a waste object
 
+        Parameters
+        ----------
+        model : Model
+            The simulation model
+        waste_type : WasteType
+            The type of waste
+        """
+        super().__init__(model)
         self.type = waste_type

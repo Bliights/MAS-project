@@ -4,3 +4,7 @@ Groupe 10
 Clément MOLLY-MITTON
 Diane VERBECQ
 """
+
+from src.server import page
+
+app = page

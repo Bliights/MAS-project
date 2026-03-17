@@ -20,6 +20,17 @@ class Knowledge:
         self.map_memory = {}
 
     def update(self, percepts: Percepts) -> None:
+        """
+        Update the agent's knowledge based on new percepts
+
+        Parameters
+        ----------
+        percepts : Percepts
+            The percepts returned by the environment, containing:
+                - the agent's current position,
+                - information about the current tile,
+                - information about neighboring tiles
+        """
         self.history.append(percepts)
 
         self.position = percepts.current_position
