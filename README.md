@@ -49,15 +49,21 @@ The code is organized around a clear separation between the model, the agents, t
 
 Several object-oriented support classes were added to make the implementation more modular than a minimal reading of the subject would require. The `Waste`, `Radioactivity`, and `DisposalZone` classes in `objects.py` explicitly model the entities present on the grid. The `Action` class in `core/actions.py` formalizes what a robot asks the environment to do. The `Inventory` class in `core/inventory.py` isolates waste storage and manipulation inside each robot. The `Knowledge` class in `core/knowledge.py` stores the robot's current position, its percept history, and its local map memory. The `Percepts` and `TileContent` data structures in `core/percepts.py` standardize what a robot can observe at each step. The zone system is also encapsulated in dedicated classes in `core/zones.py`, with `Z1`, `Z2`, and `Z3` representing the three radioactivity intervals and `Zones` grouping the global configuration. Finally, `core/enums.py` centralizes the enumerations for colors, action types, and waste types, which keeps the rest of the code simpler and more consistent.
 
+Here is a quick class diagram to illustrate our architecture (each link mean "has an instance of" or "uses an instance of"):
+
+![Class Diagram](./assets/class_diagram.png)
+
+
 ## Visualization and Execution
 The visualization layer is separated from the simulation logic. The `server.py` file defines the Solara interface, the graphical rendering of the grid, and the plots that track the number of green, yellow, and red wastes over time. The `run.py` file only exposes this page as the application entry point. This organization keeps the interface code distinct from the environment rules and the decision logic.
 
+Here is a quick overview of simulation displays:
+
+![Display](./assets/display_example.png)
+
+
 ## Results and Current Choices
 The current results validate the core mechanics of the simulation. The execution shows that green waste can be collected in zone 1, transformed into yellow waste, carried into zone 2, transformed again into red waste, then transported to the disposal zone by red robots. The plots serve to verify the proper evolution of the different waste categories during execution. Since no optimization strategy has been introduced yet, there is no comparison between behavioral strategies or tested configurations at this stage. The conceptual choice retained here is therefore a simple and readable baseline, designed to validate the environment, the interactions, and the complete treatment chain.
-
-
-
-
 
 
 ## Simulation Preview
@@ -68,7 +74,6 @@ make solara-server
 
 
 ## Contributors
-
 
 |            Name            |                Email                  |
 | :------------------------: | :-----------------------------------: |
