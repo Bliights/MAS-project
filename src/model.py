@@ -1,0 +1,317 @@
+"""
+Groupe 10
+16/03/2026
+Clément MOLLY-MITTON
+Diane VERBECQ
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from mesa import Agent, Model
+from mesa.datacollection import DataCollector
+from mesa.space import MultiGrid
+
+from src.agents import BaseRobot, GreenRobot, RedRobot, YellowRobot
+from src.core.enums import ActionType, WasteType
+from src.core.percepts import Percepts, TileContent
+from src.core.zones import Zones
+from src.objects import DisposalZone, Radioactivity, Waste
+
+if TYPE_CHECKING:
+    from src.core.actions import Action
+
+
+class RobotMission(Model):
+    def __init__(
+        self,
+        width: int,
+        height: int,
+        n_green_waste: int,
+        n_green_robots: int,
+        n_yellow_robots: int,
+        n_red_robots: int,
+    ) -> None:
+        """
+        Initialize the robot mission environment
+
+        Parameters
+        ----------
+        width : int
+            Width of the grid
+        height : int
+            Height of the grid
+        n_green_waste : int
+            Initial number of green waste objects
+        n_green_robots : int
+            Number of green robots
+        n_yellow_robots : int
+            Number of yellow robots
+        n_red_robots : int
+            Number of red robots
+        """
+        super().__init__()
+        self.width = width
+        self.height = height
+        self.grid = MultiGrid(width, height, torus=False)
+
+        self.zones = Zones.ALL
+        self.zone_width = width // len(self.zones)
+
+        self.datacollector = DataCollector(
+            model_reporters={
+                "green_waste": self.count_green,
+                "yellow_waste": self.count_yellow,
+                "red_waste": self.count_red,
+            },
+        )
+        self.init_environment(n_green_waste, n_green_robots, n_yellow_robots, n_red_robots)
+        self.datacollector.collect(self)
+
+    def _spawn_robot(self, robot_cls: BaseRobot, n: int) -> None:
+        """
+        Spawn robots of a given class in valid zones
+
+        Parameters
+        ----------
+        robot_cls : BaseRobot
+            The robot class to instantiate
+        n : int
+            Number of robots to create
+        """
+        width = self.grid.width
+        height = self.grid.height
+
+        for _ in range(n):
+            robot = robot_cls(self)
+
+            for _ in range(100):
+                x = self.random.randrange(width)
+                y = self.random.randrange(height)
+
+                cell = self.grid.get_cell_list_contents((x, y))
+
+                radio = next(o for o in cell if isinstance(o, Radioactivity))
+                zone = radio.zone
+
+                if zone in robot.allowed_zones:
+                    self.grid.place_agent(robot, (x, y))
+                    break
+
+    def _init_robot_knowledge(self) -> None:
+        """
+        Initialize each robot's knowledge with initial percepts
+        """
+        for robot in self._all_agent_instance(BaseRobot):
+            percepts = self.get_percepts(robot)
+            robot.knowledge.update(percepts)
+
+    def init_environment(
+        self,
+        n_green_waste: int,
+        n_green_robots: int,
+        n_yellow_robots: int,
+        n_red_robots: int,
+    ) -> None:
+        """
+        Initialize the environment
+
+        Parameters
+        ----------
+        n_green_waste : int
+            Number of green wastes to generate
+        n_green_robots : int
+            Number of green robots
+        n_yellow_robots : int
+            Number of yellow robots
+        n_red_robots : int
+            Number of red robots
+        """
+        width = self.grid.width
+        height = self.grid.height
+
+        for x in range(width):
+            zone_index = min(x // self.zone_width, len(self.zones) - 1)
+            zone = self.zones[zone_index]
+
+            for y in range(height):
+                radio = Radioactivity(self, zone)
+                self.grid.place_agent(radio, (x, y))
+
+                if x == width - 1:
+                    self.grid.place_agent(DisposalZone(self), (x, y))
+
+        for _ in range(n_green_waste):
+            x = self.random.randrange(0, self.zone_width)
+            y = self.random.randrange(height)
+            waste = Waste(self, WasteType.GREEN)
+            self.grid.place_agent(waste, (x, y))
+
+        self._spawn_robot(GreenRobot, n_green_robots)
+        self._spawn_robot(YellowRobot, n_yellow_robots)
+        self._spawn_robot(RedRobot, n_red_robots)
+
+        self._init_robot_knowledge()
+
+    def do(self, agent: Agent, action: Action) -> Percepts:
+        """
+        Execute an action for a given agent and return updated percepts
+
+        Parameters
+        ----------
+        agent : Agent
+            The acting agent
+        action : Action
+            The action to execute
+
+        Returns
+        -------
+        Percepts
+            Updated percepts after action execution
+        """
+        if action.type == ActionType.MOVE:
+            new_pos = action.payload.get("pos")
+
+            if not self.grid.out_of_bounds(new_pos):
+                cell = self.grid.get_cell_list_contents(new_pos)
+                radio = next(o for o in cell if isinstance(o, Radioactivity))
+
+                if radio.zone in agent.allowed_zones:
+                    self.grid.move_agent(agent, new_pos)
+
+        elif action.type == ActionType.PICK:
+            cell = self.grid.get_cell_list_contents(agent.pos)
+
+            for obj in cell:
+                if isinstance(obj, Waste) and obj.type == agent.allowed_pick:
+                    agent.inventory.add(obj)
+                    self.grid.remove_agent(obj)
+                    break
+
+        elif action.type == ActionType.TRANSFORM:
+            if agent.allowed_transform and agent.inventory.count(agent.allowed_transform) == 2:
+                next_type = agent.allowed_transform.next()
+                if next_type:
+                    agent.inventory.remove(agent.allowed_transform, 2)
+                    agent.inventory.add(Waste(self, next_type))
+
+        elif action.type == ActionType.DROP:
+            waste_type = action.payload.get("type")
+            if agent.inventory.has(waste_type):
+                waste = agent.inventory.drop(waste_type)
+                if waste:
+                    self.grid.place_agent(waste, agent.pos)
+
+        return self.get_percepts(agent)
+
+    def get_percepts(self, agent: Agent) -> Percepts:
+        """
+        Retrieve percepts for an agent
+
+        Parameters
+        ----------
+        agent : Agent
+            The agent requesting percepts
+
+        Returns
+        -------
+        Percepts
+            The perceived environment information
+        """
+        neighbors = self.grid.get_neighborhood(
+            agent.pos,
+            moore=False,
+            include_center=True,
+        )
+        percepts = {}
+
+        for pos in neighbors:
+            cell = self.grid.get_cell_list_contents(pos)
+
+            wastes = [o for o in cell if isinstance(o, Waste)]
+            robots = [o for o in cell if isinstance(o, BaseRobot) and o is not agent]
+            radio = next(o for o in cell if isinstance(o, Radioactivity))
+            is_disposal = any(isinstance(o, DisposalZone) for o in cell)
+            percepts[pos] = TileContent(
+                wastes=wastes,
+                robots=robots,
+                radioactivity=radio.level,
+                zone=radio.zone,
+                is_disposal_zone=is_disposal,
+            )
+
+        return Percepts(agent.pos, percepts.get(agent.pos), percepts)
+
+    def _all_agent_instance(self, instance: type[Agent]) -> list[BaseRobot]:
+        """
+        Retrieve all agents of a given type
+
+        Parameters
+        ----------
+        instance : type[Agent]
+            The class type to filter
+
+        Returns
+        -------
+        list[BaseRobot]
+            List of matching agents
+        """
+        return [a for a in self.agents if isinstance(a, instance)]
+
+    def _count_waste(self, waste_type: WasteType) -> int:
+        """
+        Count all waste agents of a given type in the environment
+
+        Parameters
+        ----------
+        waste_type : WasteType
+            The waste type to count
+
+        Returns
+        -------
+        int
+            Number of wastes of that type
+        """
+        return sum(1 for obj in self.agents if (isinstance(obj, Waste) and obj.type == waste_type))
+
+    def count_green(self) -> int:
+        """
+        Count green wastes
+
+        Returns
+        -------
+        int
+            The count
+        """
+        return self._count_waste(WasteType.GREEN)
+
+    def count_yellow(self) -> int:
+        """
+        Count yellow wastes
+
+        Returns
+        -------
+        int
+            The count
+        """
+        return self._count_waste(WasteType.YELLOW)
+
+    def count_red(self) -> int:
+        """
+        Count red wastes
+
+        Returns
+        -------
+        int
+            The count
+        """
+        return self._count_waste(WasteType.RED)
+
+    def step(self) -> None:
+        """
+        Execute one simulation step
+        """
+        for robot in list(self._all_agent_instance(BaseRobot)):
+            robot.step()
+        self.datacollector.collect(self)

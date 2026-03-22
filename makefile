@@ -27,3 +27,8 @@ fix:
 pre-commit:
 	@echo Run pre-commit...
 	uv run pre-commit run --all-files
+
+# ------------------- Script -------------------
+solara-server:
+	@echo Launching the solara server...
+	uv run python -m solara run src.run

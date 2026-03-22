@@ -1,13 +1,16 @@
 [project]
-name = "rexia-project"
+name = "sma-project"
 version = "0.1.0"
 description = ""
 readme = "README.md"
 requires-python = ">=3.12"
+
 dependencies = [
     "matplotlib>=3.10.8",
+    "mesa[all]>=3.5.0",
     "numpy>=2.4.2",
     "seaborn>=0.13.2",
+    "solara>=1.57.3",
 ]
 
 [dependency-groups]
