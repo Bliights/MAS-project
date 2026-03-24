@@ -16,15 +16,15 @@ from mesa.visualization import SolaraViz
 from mesa.visualization.utils import update_counter
 
 from src.agents import BaseRobot
-from src.core.enums import Colour, WasteType
+from src.core.enums import Colour, Strategy, WasteType
 from src.model import RobotMission
-from src.objects import Waste
+from src.objects import DisposalZone, Waste
 
 if TYPE_CHECKING:
     from mesa import Model
 
 
-def get_cell_background(x: int, model: Model) -> str:
+def get_cell_background(x: int, y: int, model: Model) -> str:
     """
     Determine the background color of a grid cell based on its zone
 
@@ -32,6 +32,8 @@ def get_cell_background(x: int, model: Model) -> str:
     ----------
     x : int
         The x-coordinate of the cell
+    y : int
+        The y-coordinate of the cell
     model : Model
         The simulation model containing zone configuration
 
@@ -40,6 +42,12 @@ def get_cell_background(x: int, model: Model) -> str:
     str
         A color string representing the zone (hex format)
     """
+    tile = model.grid.get_cell_list_contents([(x, y)])
+
+    for obj in tile:
+        if isinstance(obj, DisposalZone):
+            return "#4b0082"  # Purple
+
     if x < model.zone_width:
         return "#e8f5e9"  # Light green
     if x < 2 * model.zone_width:
@@ -117,7 +125,7 @@ def grid_view(model: Model) -> None:
                 (x, y),
                 1,
                 1,
-                facecolor=get_cell_background(x, model),
+                facecolor=get_cell_background(x, y, model),
                 edgecolor="lightgray",
                 linewidth=0.8,
             )
@@ -341,6 +349,7 @@ def waste_evolution_plot(model: Model) -> None:
 model_params = {
     "width": 15,
     "height": 10,
+    "strategy": Strategy.RANDOM,
     "n_green_waste": {
         "type": "SliderInt",
         "value": 12,
@@ -378,6 +387,7 @@ model_params = {
 model = RobotMission(
     model_params["width"],
     model_params["height"],
+    model_params["strategy"],
     model_params["n_green_waste"]["value"],
     model_params["n_green_robots"]["value"],
     model_params["n_yellow_robots"]["value"],

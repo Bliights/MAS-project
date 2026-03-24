@@ -54,3 +54,8 @@ class WasteType(StrEnum):
         i = order.index(self)
 
         return order[i + 1] if i + 1 < len(order) else None
+
+
+class Strategy(StrEnum):
+    RANDOM = "random"
+    COMMUNICATION = "communication"

@@ -13,7 +13,7 @@ from abc import ABC, abstractmethod
 from mesa import Agent, Model
 
 from src.core.actions import Action
-from src.core.enums import ActionType, Colour, WasteType
+from src.core.enums import ActionType, Colour, Strategy, WasteType
 from src.core.inventory import Inventory
 from src.core.knowledge import Knowledge
 from src.core.zones import Z1, Z2, Z3, Zone
@@ -22,13 +22,15 @@ from src.core.zones import Z1, Z2, Z3, Zone
 class BaseRobot(Agent, ABC):
     colour: Colour | None = None
     allowed_zones: list[Zone] = []
-    allowed_pick: WasteType | None
+    allowed_pick: list[WasteType] | None
     allowed_transform: WasteType | None
 
-    def __init__(self, model: Model) -> None:
+    def __init__(self, model: Model, name: str, strategy: Strategy) -> None:
         super().__init__(model)
         self.knowledge = Knowledge()
         self.inventory = Inventory()
+        self.name = name
+        self.strategy = strategy
 
     def step(self) -> None:
         """
@@ -75,34 +77,51 @@ class BaseRobot(Agent, ABC):
 
         return tile.zone in self.allowed_zones
 
-    def random_move(self) -> Action:
+    def random_move(self, wastes_to_pick: list[WasteType]) -> Action:
         """
         Select a random valid neighboring position and move there
+
+        Parameters
+        ----------
+        wastes_to_pick : list[WasteType]
+            Type of waste to pick in priority if seen in close tile
 
         Returns
         -------
         Action
             A MOVE action to a random valid position, or IDLE
         """
-        valid_positions = [pos for pos in self.knowledge.map_memory if self.is_valid_position(pos)]
+        valid_positions = [
+            (pos, tile)
+            for pos, tile in self.knowledge.map_memory.items()
+            if self.is_valid_position(pos)
+        ]
+        for pos, tile in valid_positions:
+            if tile.wastes:
+                for waste in tile.wastes:
+                    if waste.type in wastes_to_pick:
+                        return Action(
+                            ActionType.MOVE,
+                            {"pos": pos},
+                        )
 
         if not valid_positions:
             return Action(ActionType.IDLE)
 
         return Action(
             ActionType.MOVE,
-            {"pos": random.choice(valid_positions)},
+            {"pos": random.choice([pos for pos, _ in valid_positions])},
         )
 
 
 class GreenRobot(BaseRobot):
     colour = Colour.GREEN
     allowed_zones = [Z1]
-    allowed_pick = WasteType.GREEN
+    allowed_pick = [WasteType.GREEN]
     allowed_transform = WasteType.GREEN
 
-    def __init__(self, model: Model) -> None:
-        super().__init__(model)
+    def __init__(self, model: Model, name: str, strategy: Strategy) -> None:
+        super().__init__(model, name, strategy)
 
     def deliberate(self) -> Action:
         """
@@ -132,20 +151,20 @@ class GreenRobot(BaseRobot):
         if self.allowed_transform and self.inventory.count(self.allowed_transform) == 2:
             return Action(ActionType.TRANSFORM)
 
-        if any(w.type == self.allowed_pick for w in tile.wastes):
+        if any((w.type in self.allowed_pick and w.type == WasteType.GREEN) for w in tile.wastes):
             return Action(ActionType.PICK)
 
-        return self.random_move()
+        return self.random_move([WasteType.GREEN])
 
 
 class YellowRobot(BaseRobot):
     colour = Colour.YELLOW
     allowed_zones = [Z1, Z2]
-    allowed_pick = WasteType.YELLOW
+    allowed_pick = [WasteType.GREEN, WasteType.YELLOW]
     allowed_transform = WasteType.YELLOW
 
-    def __init__(self, model: Model) -> None:
-        super().__init__(model)
+    def __init__(self, model: Model, name: str, strategy: Strategy) -> None:
+        super().__init__(model, name, strategy)
 
     def deliberate(self) -> Action:
         """
@@ -175,20 +194,20 @@ class YellowRobot(BaseRobot):
         if self.allowed_transform and self.inventory.count(self.allowed_transform) == 2:
             return Action(ActionType.TRANSFORM)
 
-        if any(w.type == self.allowed_pick for w in tile.wastes):
+        if any((w.type in self.allowed_pick and w.type == WasteType.YELLOW) for w in tile.wastes):
             return Action(ActionType.PICK)
 
-        return self.random_move()
+        return self.random_move([WasteType.YELLOW])
 
 
 class RedRobot(BaseRobot):
     colour = Colour.RED
     allowed_zones = [Z1, Z2, Z3]
-    allowed_pick = WasteType.RED
+    allowed_pick = [WasteType.GREEN, WasteType.YELLOW, WasteType.RED]
     allowed_transform = None
 
-    def __init__(self, model: Model) -> None:
-        super().__init__(model)
+    def __init__(self, model: Model, name: str, strategy: Strategy) -> None:
+        super().__init__(model, name, strategy)
 
     def deliberate(self) -> Action:
         """
@@ -210,12 +229,26 @@ class RedRobot(BaseRobot):
         tile = self.knowledge.map_memory.get(current_pos)
         right_pos = (current_pos[0] + 1, current_pos[1])
 
-        if self.inventory.has(self.allowed_pick):
+        if self.inventory.has(WasteType.RED):
             if tile.is_disposal_zone:
-                return Action(ActionType.DROP, {"type": self.allowed_pick})
+                return Action(ActionType.DROP, {"type": WasteType.RED})
             return Action(ActionType.MOVE, {"pos": right_pos})
 
-        if not tile.is_disposal_zone and any(w.type == self.allowed_pick for w in tile.wastes):
+        if not tile.is_disposal_zone and any(
+            (w.type in self.allowed_pick and w.type == WasteType.RED) for w in tile.wastes
+        ):
             return Action(ActionType.PICK)
 
-        return self.random_move()
+        neighbors = [
+            (current_pos[0] + 1, current_pos[1]),
+            (current_pos[0] - 1, current_pos[1]),
+            (current_pos[0], current_pos[1] + 1),
+            (current_pos[0], current_pos[1] - 1),
+        ]
+
+        for pos in neighbors:
+            tile = self.knowledge.map_memory.get(pos)
+            if tile and tile.is_disposal_zone:
+                return self.random_move([])
+
+        return self.random_move([WasteType.RED])

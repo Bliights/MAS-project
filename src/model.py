@@ -14,7 +14,7 @@ from mesa.datacollection import DataCollector
 from mesa.space import MultiGrid
 
 from src.agents import BaseRobot, GreenRobot, RedRobot, YellowRobot
-from src.core.enums import ActionType, WasteType
+from src.core.enums import ActionType, Strategy, WasteType
 from src.core.percepts import Percepts, TileContent
 from src.core.zones import Zones
 from src.objects import DisposalZone, Radioactivity, Waste
@@ -28,6 +28,7 @@ class RobotMission(Model):
         self,
         width: int,
         height: int,
+        strategy: Strategy,
         n_green_waste: int,
         n_green_robots: int,
         n_yellow_robots: int,
@@ -42,6 +43,8 @@ class RobotMission(Model):
             Width of the grid
         height : int
             Height of the grid
+        strategy : Strategy
+            Strategy of the robots
         n_green_waste : int
             Initial number of green waste objects
         n_green_robots : int
@@ -55,6 +58,7 @@ class RobotMission(Model):
         self.width = width
         self.height = height
         self.grid = MultiGrid(width, height, torus=False)
+        self.strategy = strategy
 
         self.zones = Zones.ALL
         self.zone_width = width // len(self.zones)
@@ -66,10 +70,16 @@ class RobotMission(Model):
                 "red_waste": self.count_red,
             },
         )
-        self.init_environment(n_green_waste, n_green_robots, n_yellow_robots, n_red_robots)
+        self.init_environment(
+            strategy,
+            n_green_waste,
+            n_green_robots,
+            n_yellow_robots,
+            n_red_robots,
+        )
         self.datacollector.collect(self)
 
-    def _spawn_robot(self, robot_cls: BaseRobot, n: int) -> None:
+    def _spawn_robot(self, robot_cls: BaseRobot, n: int, strategy: Strategy) -> None:
         """
         Spawn robots of a given class in valid zones
 
@@ -79,12 +89,15 @@ class RobotMission(Model):
             The robot class to instantiate
         n : int
             Number of robots to create
+        strategy : Strategy
+            Strategy of the robots
         """
         width = self.grid.width
         height = self.grid.height
 
-        for _ in range(n):
-            robot = robot_cls(self)
+        for i in range(n):
+            name = f"{robot_cls.__name__}_{i}"
+            robot = robot_cls(self, name, strategy)
 
             for _ in range(100):
                 x = self.random.randrange(width)
@@ -109,6 +122,7 @@ class RobotMission(Model):
 
     def init_environment(
         self,
+        strategy: Strategy,
         n_green_waste: int,
         n_green_robots: int,
         n_yellow_robots: int,
@@ -119,6 +133,8 @@ class RobotMission(Model):
 
         Parameters
         ----------
+        strategy : Strategy
+            Strategy of the robots
         n_green_waste : int
             Number of green wastes to generate
         n_green_robots : int
@@ -148,9 +164,9 @@ class RobotMission(Model):
             waste = Waste(self, WasteType.GREEN)
             self.grid.place_agent(waste, (x, y))
 
-        self._spawn_robot(GreenRobot, n_green_robots)
-        self._spawn_robot(YellowRobot, n_yellow_robots)
-        self._spawn_robot(RedRobot, n_red_robots)
+        self._spawn_robot(GreenRobot, n_green_robots, strategy)
+        self._spawn_robot(YellowRobot, n_yellow_robots, strategy)
+        self._spawn_robot(RedRobot, n_red_robots, strategy)
 
         self._init_robot_knowledge()
 
@@ -184,7 +200,7 @@ class RobotMission(Model):
             cell = self.grid.get_cell_list_contents(agent.pos)
 
             for obj in cell:
-                if isinstance(obj, Waste) and obj.type == agent.allowed_pick:
+                if isinstance(obj, Waste) and obj.type in agent.allowed_pick:
                     agent.inventory.add(obj)
                     self.grid.remove_agent(obj)
                     break
