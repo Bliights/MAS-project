@@ -349,7 +349,12 @@ def waste_evolution_plot(model: Model) -> None:
 model_params = {
     "width": 15,
     "height": 10,
-    "strategy": Strategy.RANDOM,
+    "strategy": {
+        "type": "Select",
+        "value": Strategy.COMMUNICATION,
+        "label": "Strategy",
+        "values": list(Strategy),
+    },
     "n_green_waste": {
         "type": "SliderInt",
         "value": 12,
@@ -387,7 +392,7 @@ model_params = {
 model = RobotMission(
     model_params["width"],
     model_params["height"],
-    model_params["strategy"],
+    model_params["strategy"]["value"],
     model_params["n_green_waste"]["value"],
     model_params["n_green_robots"]["value"],
     model_params["n_yellow_robots"]["value"],

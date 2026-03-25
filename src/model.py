@@ -1,10 +1,3 @@
-"""
-Groupe 10
-16/03/2026
-Clément MOLLY-MITTON
-Diane VERBECQ
-"""
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -14,6 +7,7 @@ from mesa.datacollection import DataCollector
 from mesa.space import MultiGrid
 
 from src.agents import BaseRobot, GreenRobot, RedRobot, YellowRobot
+from src.communication.service import MessageService
 from src.core.enums import ActionType, Strategy, WasteType
 from src.core.percepts import Percepts, TileContent
 from src.core.zones import Zones
@@ -62,6 +56,9 @@ class RobotMission(Model):
 
         self.zones = Zones.ALL
         self.zone_width = width // len(self.zones)
+
+        if strategy == Strategy.COMMUNICATION:
+            self.messages_service = MessageService(self, True)
 
         self.datacollector = DataCollector(
             model_reporters={
@@ -116,9 +113,13 @@ class RobotMission(Model):
         """
         Initialize each robot's knowledge with initial percepts
         """
-        for robot in self._all_agent_instance(BaseRobot):
+        all_robots = self._all_agent_instance(BaseRobot)
+        for robot in all_robots:
             percepts = self.get_percepts(robot)
             robot.knowledge.update(percepts)
+            robot.knowledge.agents = [
+                other for other in all_robots if type(other) is type(robot) and other is not robot
+            ]
 
     def init_environment(
         self,
@@ -257,7 +258,23 @@ class RobotMission(Model):
                 is_disposal_zone=is_disposal,
             )
 
-        return Percepts(agent.pos, percepts.get(agent.pos), percepts)
+        waste_count = {}
+        agent_carrying = {}
+
+        for obj in self.agents:
+            if isinstance(obj, Waste):
+                waste_count[obj.type] = waste_count.get(obj.type, 0) + 1
+            elif isinstance(obj, BaseRobot) and obj.inventory.wastes:
+                waste_type = obj.inventory.wastes[0].type
+                agent_carrying[waste_type] = agent_carrying.get(waste_type, 0) + 1
+
+        return Percepts(
+            current_position=agent.pos,
+            current_tile=percepts.get(agent.pos),
+            neighbors=percepts,
+            waste_count=waste_count,
+            agent_carrying=agent_carrying,
+        )
 
     def _all_agent_instance(self, instance: type[Agent]) -> list[BaseRobot]:
         """
