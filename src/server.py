@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pandas as pd
 import solara
 from matplotlib.figure import Figure
 from matplotlib.patches import Rectangle
@@ -16,15 +17,17 @@ from mesa.visualization import SolaraViz
 from mesa.visualization.utils import update_counter
 
 from src.agents import BaseRobot
-from src.core.enums import Colour, WasteType
+from src.core.enums import Colour, Strategy, WasteType
 from src.model import RobotMission
-from src.objects import Waste
+from src.objects import DisposalZone, Waste
 
 if TYPE_CHECKING:
     from mesa import Model
 
+    from src.communication.enums import Message
 
-def get_cell_background(x: int, model: Model) -> str:
+
+def get_cell_background(x: int, y: int, model: Model) -> str:
     """
     Determine the background color of a grid cell based on its zone
 
@@ -32,6 +35,8 @@ def get_cell_background(x: int, model: Model) -> str:
     ----------
     x : int
         The x-coordinate of the cell
+    y : int
+        The y-coordinate of the cell
     model : Model
         The simulation model containing zone configuration
 
@@ -40,6 +45,12 @@ def get_cell_background(x: int, model: Model) -> str:
     str
         A color string representing the zone (hex format)
     """
+    tile = model.grid.get_cell_list_contents([(x, y)])
+
+    for obj in tile:
+        if isinstance(obj, DisposalZone):
+            return "#4b0082"  # Purple
+
     if x < model.zone_width:
         return "#e8f5e9"  # Light green
     if x < 2 * model.zone_width:
@@ -107,7 +118,7 @@ def grid_view(model: Model) -> None:
     """
     update_counter.get()
 
-    fig = Figure(figsize=(8, 5))
+    fig = Figure(figsize=(8, 4))
     ax = fig.subplots()
 
     # Grid
@@ -117,7 +128,7 @@ def grid_view(model: Model) -> None:
                 (x, y),
                 1,
                 1,
-                facecolor=get_cell_background(x, model),
+                facecolor=get_cell_background(x, y, model),
                 edgecolor="lightgray",
                 linewidth=0.8,
             )
@@ -228,7 +239,7 @@ def grid_view(model: Model) -> None:
 
     # Robot with waste
     ax.scatter(
-        lx + 2.5 * step,
+        lx + 2.7 * step,
         ly,
         s=220,
         marker="o",
@@ -239,7 +250,7 @@ def grid_view(model: Model) -> None:
         clip_on=False,
     )
     ax.scatter(
-        lx + 2.5 * step + 0.16,
+        lx + 2.7 * step + 0.16,
         ly + 0.16,
         s=45,
         marker="s",
@@ -250,7 +261,7 @@ def grid_view(model: Model) -> None:
         clip_on=False,
     )
     ax.text(
-        lx + 2.5 * step + 0.16,
+        lx + 2.7 * step + 0.16,
         ly + 0.16,
         "1",
         fontsize=6,
@@ -262,7 +273,7 @@ def grid_view(model: Model) -> None:
         clip_on=False,
     )
     ax.text(
-        lx + 2.5 * step + 0.5,
+        lx + 2.7 * step + 0.5,
         ly,
         "Robot carrying waste",
         va="center",
@@ -289,7 +300,7 @@ def waste_count_histogram(model: Model) -> None:
 
     last = data.iloc[-1]
 
-    fig = Figure(figsize=(8, 5))
+    fig = Figure(figsize=(8, 4))
     ax = fig.subplots()
 
     labels = ["green", "yellow", "red"]
@@ -320,7 +331,7 @@ def waste_evolution_plot(model: Model) -> None:
 
     data = model.datacollector.get_model_vars_dataframe()
 
-    fig = Figure(figsize=(8, 5))
+    fig = Figure(figsize=(8, 4))
     ax = fig.subplots()
 
     x = data.index
@@ -338,9 +349,105 @@ def waste_evolution_plot(model: Model) -> None:
     solara.FigureMatplotlib(fig)
 
 
+def format_messages(messages: list[Message]) -> str:
+    """
+    Convert a list of messages into a readable one-line string
+
+    Parameters
+    ----------
+    messages : list[Message]
+        The messages to format
+
+    Returns
+    -------
+    str
+        A formatted string containing all messages, or "-" if the list is empty
+    """
+    if not messages:
+        return "-"
+    return " | ".join(
+        f"{m.sender}->{m.receiver}:{m.performative.name}/{m.type.name}" for m in messages
+    )
+
+
+def format_wastes(wastes: list[Waste]) -> str:
+    """
+    Convert a list of carried wastes into a readable string
+
+    Parameters
+    ----------
+    wastes : list[Waste]
+        The wastes to format
+
+    Returns
+    -------
+    str
+        A formatted string of waste types, or "-" if the list is empty
+    """
+    if not wastes:
+        return "-"
+    return ", ".join(w.type.name for w in wastes)
+
+
+@solara.component
+def agents_debug_table(model: Model) -> None:
+    """
+    Display a debug table showing the last recorded state of all robots before the execution of the action
+
+    Parameters
+    ----------
+    model : Model
+        The simulation model
+    """
+    update_counter.get()
+
+    robots = [agent for agent in model.agents if isinstance(agent, BaseRobot)]
+    robots = sorted(robots, key=lambda robot: robot.name)
+
+    rows = [
+        {
+            "Agent": robot.last_infos.get("agent", robot.name),
+            "Pos": str(robot.last_infos.get("pos", "-")),
+            "Last action": (
+                f"{robot.last_infos.get('action', '-')}"
+                + (
+                    f" | payload={robot.last_infos.get('payload')}"
+                    if robot.last_infos.get("payload") is not None
+                    else ""
+                )
+            ),
+            "Status": robot.last_infos.get("status", "-"),
+            "Available": (
+                "-"
+                if robot.last_infos.get("available", -1) < model.current_step
+                else robot.last_infos.get("available")
+            ),
+            "Reserved": str(robot.last_infos.get("reserved", "-")),
+            "Partner": robot.last_infos.get("current_partner", "-") or "-",
+            "Meeting point": str(robot.last_infos.get("meeting_point", "-")),
+            "Wastes": format_wastes(robot.last_infos.get("wastes", [])),
+            "Unread": format_messages(robot.last_infos.get("message_receive", [])),
+            "Outbox": format_messages(robot.last_infos.get("message_outbox", [])),
+        }
+        for robot in robots
+    ]
+
+    df = pd.DataFrame(rows)
+
+    with solara.Column():
+        solara.Markdown(f"### Agents state — step {model.current_step}")
+        solara.DataFrame(df, items_per_page=10, scrollable=True)
+
+
 model_params = {
     "width": 15,
     "height": 10,
+    "strategy": {
+        "type": "Select",
+        "value": Strategy.COMMUNICATION,
+        "label": "Strategy",
+        "values": list(Strategy),
+    },
     "n_green_waste": {
         "type": "SliderInt",
         "value": 12,
@@ -359,7 +466,7 @@ model_params = {
     },
     "n_yellow_robots": {
         "type": "SliderInt",
-        "value": 3,
+        "value": 0,
         "label": "Yellow robots",
         "min": 1,
         "max": 10,
@@ -367,7 +474,7 @@ model_params = {
     },
     "n_red_robots": {
         "type": "SliderInt",
-        "value": 2,
+        "value": 0,
         "label": "Red robots",
         "min": 1,
         "max": 10,
@@ -378,6 +485,7 @@ model_params = {
 model = RobotMission(
     model_params["width"],
     model_params["height"],
+    model_params["strategy"]["value"],
     model_params["n_green_waste"]["value"],
     model_params["n_green_robots"]["value"],
     model_params["n_yellow_robots"]["value"],
@@ -388,6 +496,7 @@ page = SolaraViz(
     model,
     components=[
         grid_view,
+        agents_debug_table,
         waste_count_histogram,
         waste_evolution_plot,
     ],

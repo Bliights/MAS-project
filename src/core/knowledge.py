@@ -17,7 +17,10 @@ class Knowledge:
     def __init__(self) -> None:
         self.history = []
         self.position = None
+        self.agents = []
         self.map_memory = {}
+        self.waste_count = {}
+        self.agent_carrying = {}
 
     def update(self, percepts: Percepts) -> None:
         """
@@ -38,3 +41,6 @@ class Knowledge:
 
         for pos, tile in percepts.neighbors.items():
             self.map_memory[pos] = tile
+
+        self.waste_count = percepts.waste_count
+        self.agent_carrying = percepts.agent_carrying

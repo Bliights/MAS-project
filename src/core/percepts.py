@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.agents import BaseRobot
+    from src.core.enums import WasteType
     from src.core.zones import Zone
     from src.objects import Waste
 
@@ -30,3 +31,5 @@ class Percepts:
     current_position: tuple[int, int]
     current_tile: TileContent
     neighbors: dict[tuple[int, int], TileContent]
+    waste_count: dict[WasteType, int]
+    agent_carrying: dict[WasteType, int]

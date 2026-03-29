@@ -22,6 +22,8 @@ class ActionType(StrEnum):
     TRANSFORM = "transform"
     DROP = "drop"
     IDLE = "idle"
+    READ_MESSAGES = "read messages"
+    SEND_MESSAGES = "send messages"
 
 
 class WasteType(StrEnum):
@@ -54,3 +56,17 @@ class WasteType(StrEnum):
         i = order.index(self)
 
         return order[i + 1] if i + 1 < len(order) else None
+
+
+class Strategy(StrEnum):
+    RANDOM = "random"
+    COMMUNICATION = "communication"
+
+
+class ProtocolStep(StrEnum):
+    NONE = "None"
+    SEARCHING = "searching"
+    WAITING_CONNECTION = "waiting connection"
+    COMMUNICATING = "communicating"
+    MOVING = "moving"
+    TRANSFERING = "transfering"

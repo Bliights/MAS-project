@@ -60,3 +60,14 @@ class Waste(Agent):
         """
         super().__init__(model)
         self.type = waste_type
+
+    def __repr__(self) -> str:
+        """
+        Return a string representation of the Waste object
+
+        Returns
+        -------
+        str
+            Representation
+        """
+        return f"Waste(type={self.type.name})"
