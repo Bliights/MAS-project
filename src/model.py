@@ -1,3 +1,10 @@
+"""
+Groupe 10
+16/03/2026
+Clément MOLLY-MITTON
+Diane VERBECQ
+"""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -53,12 +60,12 @@ class RobotMission(Model):
         self.height = height
         self.grid = MultiGrid(width, height, torus=False)
         self.strategy = strategy
+        self.current_step = 0
 
         self.zones = Zones.ALL
         self.zone_width = width // len(self.zones)
 
-        if strategy == Strategy.COMMUNICATION:
-            self.messages_service = MessageService(self, True)
+        self.messages_service = MessageService(self, False)
 
         self.datacollector = DataCollector(
             model_reporters={
@@ -199,9 +206,13 @@ class RobotMission(Model):
 
         elif action.type == ActionType.PICK:
             cell = self.grid.get_cell_list_contents(agent.pos)
-
+            waste_type = action.payload.get("type")
             for obj in cell:
-                if isinstance(obj, Waste) and obj.type in agent.allowed_pick:
+                if (
+                    isinstance(obj, Waste)
+                    and obj.type in agent.allowed_pick
+                    and obj.type == waste_type
+                ):
                     agent.inventory.add(obj)
                     self.grid.remove_agent(obj)
                     break
@@ -219,6 +230,15 @@ class RobotMission(Model):
                 waste = agent.inventory.drop(waste_type)
                 if waste:
                     self.grid.place_agent(waste, agent.pos)
+
+        elif action.type == ActionType.SEND_MESSAGES:
+            messages = agent.mailbox.flush_outbox()
+            for message in messages:
+                self.messages_service.send_message(message)
+
+        elif action.type == ActionType.READ_MESSAGES:
+            messages = agent.mailbox.get_new_messages()
+            agent.process_messages(messages)
 
         return self.get_percepts(agent)
 
@@ -264,7 +284,12 @@ class RobotMission(Model):
         for obj in self.agents:
             if isinstance(obj, Waste):
                 waste_count[obj.type] = waste_count.get(obj.type, 0) + 1
-            elif isinstance(obj, BaseRobot) and obj.inventory.wastes:
+            elif isinstance(obj, type(agent)) and obj.inventory.wastes:
+                if (
+                    obj.allowed_transform is not None
+                    and obj.inventory.count(obj.allowed_transform) >= 2
+                ):
+                    continue
                 waste_type = obj.inventory.wastes[0].type
                 agent_carrying[waste_type] = agent_carrying.get(waste_type, 0) + 1
 
@@ -345,6 +370,10 @@ class RobotMission(Model):
         """
         Execute one simulation step
         """
-        for robot in list(self._all_agent_instance(BaseRobot)):
+        self.messages_service.dispatch_messages()
+        robots = list(self._all_agent_instance(BaseRobot))
+        self.random.shuffle(robots)
+        for robot in robots:
             robot.step()
+        self.current_step += 1
         self.datacollector.collect(self)

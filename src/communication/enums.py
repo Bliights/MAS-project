@@ -1,11 +1,12 @@
+"""
+Groupe 10
+16/03/2026
+Clément MOLLY-MITTON
+Diane VERBECQ
+"""
+
 from dataclasses import dataclass
 from enum import StrEnum
-
-
-class ProtocolStep(StrEnum):
-    NONE = "None"
-    MOVE = "move"
-    TRANSFER = "transfer"
 
 
 class Performative(StrEnum):

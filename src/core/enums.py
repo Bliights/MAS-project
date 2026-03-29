@@ -1,3 +1,10 @@
+"""
+Groupe 10
+16/03/2026
+Clément MOLLY-MITTON
+Diane VERBECQ
+"""
+
 from __future__ import annotations
 
 from enum import StrEnum
@@ -15,6 +22,8 @@ class ActionType(StrEnum):
     TRANSFORM = "transform"
     DROP = "drop"
     IDLE = "idle"
+    READ_MESSAGES = "read messages"
+    SEND_MESSAGES = "send messages"
 
 
 class WasteType(StrEnum):
@@ -52,3 +61,12 @@ class WasteType(StrEnum):
 class Strategy(StrEnum):
     RANDOM = "random"
     COMMUNICATION = "communication"
+
+
+class ProtocolStep(StrEnum):
+    NONE = "None"
+    SEARCHING = "searching"
+    WAITING_CONNECTION = "waiting connection"
+    COMMUNICATING = "communicating"
+    MOVING = "moving"
+    TRANSFERING = "transfering"

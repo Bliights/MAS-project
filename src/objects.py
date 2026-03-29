@@ -1,3 +1,10 @@
+"""
+Groupe 10
+16/03/2026
+Clément MOLLY-MITTON
+Diane VERBECQ
+"""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -53,3 +60,14 @@ class Waste(Agent):
         """
         super().__init__(model)
         self.type = waste_type
+
+    def __repr__(self) -> str:
+        """
+        Return a string representation of the Waste object
+
+        Returns
+        -------
+        str
+            Representation
+        """
+        return f"Waste(type={self.type.name})"
