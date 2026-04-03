@@ -72,6 +72,7 @@ class RobotMission(Model):
                 "green_waste": self.count_green,
                 "yellow_waste": self.count_yellow,
                 "red_waste": self.count_red,
+                "total_distance": self.total_waste_distance,
             },
         )
         self.init_environment(
@@ -365,6 +366,27 @@ class RobotMission(Model):
             The count
         """
         return self._count_waste(WasteType.RED)
+
+    def total_waste_distance(self) -> int:
+        """
+        Compute the total distance of all wastes to the disposal zone
+
+        Returns
+        -------
+        int
+            Sum of distances
+        """
+        disposal_x = self.width - 1
+        total = 0
+        for agent in self.agents:
+            if isinstance(agent, Waste) and agent.pos is not None:
+                x, _ = agent.pos
+                total += abs(disposal_x - x)
+
+            elif isinstance(agent, BaseRobot) and len(agent.inventory.wastes) > 0:
+                x, _ = agent.pos
+                total += len(agent.inventory.wastes) * abs(disposal_x - x)
+        return total
 
     def step(self) -> None:
         """

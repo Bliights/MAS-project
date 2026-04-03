@@ -439,6 +439,35 @@ def agents_debug_table(model: Model) -> None:
         solara.DataFrame(df, items_per_page=10, scrollable=True)
 
 
+@solara.component
+def distance_plot(model: Model) -> None:
+    """
+    Plot the evolution of total waste distance to disposal zone
+
+    Parameters
+    ----------
+    model : Model
+        The simulation model
+    """
+    update_counter.get()
+
+    data = model.datacollector.get_model_vars_dataframe()
+
+    fig = Figure(figsize=(8, 4))
+    ax = fig.subplots()
+
+    x = data.index
+
+    ax.plot(x, data["total_distance"], linewidth=2)
+
+    ax.set_xlabel("Step")
+    ax.set_ylabel("Total distance")
+    ax.set_title("Total waste distance to disposal zone")
+    ax.grid(True, alpha=0.3)
+
+    solara.FigureMatplotlib(fig)
+
+
 model_params = {
     "width": 15,
     "height": 10,
@@ -499,6 +528,7 @@ page = SolaraViz(
         agents_debug_table,
         waste_count_histogram,
         waste_evolution_plot,
+        distance_plot,
     ],
     model_params=model_params,
     name="Robot Mission - Simple Init",
