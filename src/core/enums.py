@@ -57,6 +57,23 @@ class WasteType(StrEnum):
 
         return order[i + 1] if i + 1 < len(order) else None
 
+    def all_previous(self) -> list[WasteType]:
+        """
+        Return all the previous waste in the order
+
+        Returns
+        -------
+        list[WasteType]
+            List of all the previous waste
+        """
+        order = self.order()
+        i = order.index(self)
+        previous = []
+        while i - 1 >= 0:
+            previous.append(order[i - 1])
+            i -= 1
+        return previous
+
 
 class Strategy(StrEnum):
     RANDOM = "random"

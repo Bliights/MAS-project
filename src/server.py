@@ -487,7 +487,7 @@ model_params = {
     },
     "n_green_robots": {
         "type": "SliderInt",
-        "value": 4,
+        "value": 5,
         "label": "Green robots",
         "min": 1,
         "max": 10,
@@ -495,7 +495,7 @@ model_params = {
     },
     "n_yellow_robots": {
         "type": "SliderInt",
-        "value": 0,
+        "value": 3,
         "label": "Yellow robots",
         "min": 1,
         "max": 10,
@@ -503,7 +503,7 @@ model_params = {
     },
     "n_red_robots": {
         "type": "SliderInt",
-        "value": 0,
+        "value": 2,
         "label": "Red robots",
         "min": 1,
         "max": 10,

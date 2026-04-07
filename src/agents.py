@@ -241,9 +241,13 @@ class BaseRobot(Agent, ABC):
         if self.protocol_step != ProtocolStep.NONE:
             return False
         waste_type = self.allowed_transform
+        prev_types = waste_type.all_previous()
+
         waste_count = self.knowledge.waste_count.get(waste_type, 0)
+        prev_count = sum([self.knowledge.waste_count.get(prev, 0) for prev in prev_types])
+
         robot_carrying = self.knowledge.agent_carrying.get(waste_type, 0)
-        return waste_count > 1 and waste_count == robot_carrying
+        return waste_count > 1 and waste_count == robot_carrying and prev_count <= 1
 
     def can_start_search(self) -> bool:
         """
@@ -831,9 +835,11 @@ class GreenRobot(BaseRobot):
         tile = self.knowledge.map_memory.get(current_pos)
         next_type = self.allowed_transform.next() if self.allowed_transform else None
 
+        # If a protocole action is needed
         if protocol_action is not None:
             return protocol_action
 
+        # Last waste
         if self.knowledge.waste_count.get(self.allowed_transform, 0) == 1 and self.inventory.has(
             self.allowed_transform,
         ):
@@ -841,21 +847,26 @@ class GreenRobot(BaseRobot):
                 return Action(ActionType.DROP, {"type": self.allowed_transform})
             return self.move_towards(self.target_position)
 
+        # Blocked
         if self.need_communication() and self.can_start_search():
             self.start_communication(self.allowed_transform)
             return Action(ActionType.SEND_MESSAGES)
 
+        # Has transformed waste
         if next_type and self.inventory.has(next_type):
             if current_pos == self.target_position:
                 return Action(ActionType.DROP, {"type": next_type})
             return self.move_towards(self.target_position)
 
+        # Can transformed
         if self.allowed_transform and self.inventory.count(self.allowed_transform) == 2:
             return Action(ActionType.TRANSFORM)
 
+        # If on a tile with a waste
         if any(
             (w.type in self.allowed_pick and w.type == self.allowed_transform) for w in tile.wastes
         ):
+            # To avoid picking the last waste on the target position
             if (
                 self.knowledge.waste_count.get(self.allowed_transform, 0) == 1
                 and current_pos == self.target_position
@@ -936,6 +947,71 @@ class YellowRobot(BaseRobot):
         Action
             The selected action
         """
+        protocol_action = self.transfert_protocol()
+        current_pos = self.knowledge.position
+        tile = self.knowledge.map_memory.get(current_pos)
+        next_type = self.allowed_transform.next() if self.allowed_transform else None
+        prev_types = self.allowed_transform.all_previous()
+        prev_count = sum([self.knowledge.waste_count.get(prev, 0) for prev in prev_types])
+
+        # If a protocole action is needed
+        if protocol_action is not None:
+            return protocol_action
+
+        # Last waste
+        if (
+            prev_count <= 1
+            and self.knowledge.waste_count.get(self.allowed_transform, 0) == 1
+            and self.inventory.has(
+                self.allowed_transform,
+            )
+        ):
+            if current_pos == self.target_position:
+                return Action(ActionType.DROP, {"type": self.allowed_transform})
+            return self.move_towards(self.target_position)
+
+        # Blocked
+        if self.need_communication() and self.can_start_search():
+            self.start_communication(self.allowed_transform)
+            return Action(ActionType.SEND_MESSAGES)
+
+        # Has transformed waste
+        if next_type and self.inventory.has(next_type):
+            if current_pos == self.target_position:
+                return Action(ActionType.DROP, {"type": next_type})
+            return self.move_towards(self.target_position)
+
+        # Has other waste
+        for prev in prev_types:
+            if self.inventory.has(prev):
+                if current_pos == self.target_position:
+                    return Action(ActionType.DROP, {"type": prev})
+                return self.move_towards(self.target_position)
+
+        # Can transformed
+        if self.allowed_transform and self.inventory.count(self.allowed_transform) == 2:
+            return Action(ActionType.TRANSFORM)
+
+        # If on a tile with a waste
+        for w in tile.wastes:
+            if w.type in self.allowed_pick:
+                if w.type == self.allowed_transform:
+                    # To avoid picking the last waste on the target position
+                    if (
+                        self.knowledge.waste_count.get(self.allowed_transform, 0) == 1
+                        and current_pos == self.target_position
+                    ):
+                        return self.move_towards(self.start_position)
+
+                    return Action(ActionType.PICK, {"type": self.allowed_transform})
+                # If it's the last waste we pick it
+                if self.knowledge.waste_count.get(w.type, 0) == 1:
+                    return Action(ActionType.PICK, {"type": w.type})
+
+        if current_pos == self.start_position:
+            return Action(ActionType.IDLE)
+
+        return self.move_towards(self.start_position)
 
 
 class RedRobot(BaseRobot):
@@ -1016,3 +1092,27 @@ class RedRobot(BaseRobot):
         Action
             The selected action
         """
+        protocol_action = self.transfert_protocol()
+        current_pos = self.knowledge.position
+        tile = self.knowledge.map_memory.get(current_pos)
+
+        # If a protocole action is needed
+        if protocol_action is not None:
+            return protocol_action
+
+        # Has waste
+        for waste_type in self.allowed_pick:
+            if self.inventory.has(waste_type):
+                if current_pos == self.target_position:
+                    return Action(ActionType.DROP, {"type": waste_type})
+                return self.move_towards(self.target_position)
+
+        # If on a tile with a waste
+        for w in tile.wastes:
+            if w.type in self.allowed_pick and current_pos != self.target_position:
+                return Action(ActionType.PICK, {"type": w.type})
+
+        if current_pos == self.start_position:
+            return Action(ActionType.IDLE)
+
+        return self.move_towards(self.start_position)
