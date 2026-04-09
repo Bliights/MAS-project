@@ -51,6 +51,8 @@ However, the robots do not operate with complete information. Each robot only ha
 
 To tackle these constraints, two different strategies are explored. On the one hand, a basic approach without communication is implemented, where robots act independently using simple behaviors. On the other hand, a more advanced strategy introduces a communication protocol, enabling robots to coordinate their actions and achieve more efficient and optimized waste compaction and transportation.
 
+The objective of the system is not only to eventually dispose of waste, but to do so as efficiently as possible. In our implementation, we evaluate efficiency mainly through the number of simulation steps required to eliminate all waste from the environment. We also monitor intermediate indicators such as the evolution of the number of green, yellow and red wastes over time, and the progression of waste toward the disposal zone. This allows us to compare a baseline random strategy with a communication-based strategy under the same environment conditions.
+
 
 ## Architecture
 ### Logic
@@ -155,13 +157,101 @@ Here are the main behaviors for each type of robot, in order of priority:
 
 ### Results
 ***
+We compared the two strategies under identical simulation settings (same number of agents, wastes, and environment structure). The simulation involves stochastic processes, and while a random seed is implicitly used, it is not fixed or controlled in our implementation. As a result, each run corresponds to a different random initialization and evolution of the system.
+
+To ensure a fair evaluation, we performed multiple independent runs for each strategy and reported aggregated statistics. For each run, we recorded the number of steps required to complete the mission, the evolution of waste categories over time, the number of disposed wastes, and, for the communication strategy, the number of exchanged messages and successful transfers.
+
+Since our objective is to isolate the effect of the strategy rather than that of the environment configuration, we fix the following initial setup:
+
+- 12 green wastes
+- 5 green robots
+- 3 yellow robots
+- 2 red robots
+
+We chose this setup because 12 green wastes can be fully transformed into 3 red wastes. For example, if we had chosen 10 green wastes, it will transform into 5 yellow and become impossible to fully transform into red wastes. There will be 2 red wastes and 1 yellow waste remaining.
+
+We set a maximum of 300 steps to handle potential deadlock situations in the random strategy.
 
 
+#### Analysis of the random strategy
+*** 
+Average on 30 run : 
+| Strategy | Avg. completion steps | Std. dev. | Success rate |
+| -------- | --------------------: | --------: | -----------: |
+| Random   |                   300 |         0 |           0% |
+
+**Example graphs :**
+![Random graph 2](assets/graphe_random_3.svg)
+![Random graph 1](assets/graphe_random_1.svg)
+![Random graph 2](assets/graphe_random_2.svg)
+
+The results clearly show that the random strategy systematically fails to complete the mission. In all runs, the simulation reaches the maximum number of steps (300) without successfully disposing of all waste, resulting in a 0% success rate.
+
+This behavior highlights a fundamental limitation of the random approach. Due to the absence of coordination between agents, blocking situations frequently occur. For example, two robots may each hold one green waste, making it impossible to perform the required transformation without cooperation. Since no communication mechanism is available, the system becomes stuck and cannot progress further.
+
+This phenomenon is also visible in the graphs. As shown in the waste evolution plot, the number of wastes initially decreases as some transformations occur, but quickly stabilizes, indicating that the system is no longer making progress. Similarly, the total distance to the disposal zone decreases at first but then reaches a plateau, reflecting a blocking situation where no further improvement is possible. The final waste distribution also confirms that some waste remains unprocessed at the end of the simulation.
+
+These results demonstrate that a purely reactive and uncoordinated strategy is insufficient for solving the task. They strongly motivate the introduction of communication and coordination mechanisms between agents.
+
+#### Analysis of the communication strategy
+*** 
+Average on 30 run : 
+| Strategy | Avg. completion steps | Std. dev. | Success rate |
+| --------------- | --------------------: | --------: | -----------: |
+| Communication   |                   127,72 |       33,35 |           100% |
+
+**Example graphs :**
+![Communication graph 2](assets/graphe_communication_3.svg)
+![Communication graph 1](assets/graphe_communication_1.svg)
+![Communication graph 2](assets/graphe_communication_2.svg)
+
+The results show that the communication-based strategy successfully completes the mission in all runs, achieving a 100% success rate. On average, the task is completed in 127.72 steps, with a standard deviation of 33.35, indicating some variability but overall consistent performance.
+
+In contrast to the random strategy, the introduction of communication allows agents to coordinate their actions and avoid blocking situations. In particular, situations where resources are distributed across multiple agents can now be resolved through interaction, enabling the necessary transformations to take place. This significantly improves the system’s ability to progress toward the goal.
+
+This improvement is clearly visible in the graphs. As shown in the waste evolution plot, the number of green and yellow wastes progressively decreases until all wastes are transformed into red waste and eventually removed. Unlike the random strategy, no plateau is observed, and the system continues to make progress until completion. Similarly, the total distance to the disposal zone steadily decreases to zero, confirming that all wastes are successfully transported to their final destination. The final waste distribution also shows that no intermediate waste remains, indicating that the full transformation pipeline has been completed.
+
+Although the number of steps varies depending on the specific evolution of each run, the system consistently reaches completion, unlike the random strategy, which systematically fails due to deadlocks. This demonstrates that coordination between agents is not only beneficial but essential for solving the task efficiently.
+
+#### Comparative analysis and discussion
+***
+
+The comparison between the two strategies highlights a clear and significant difference in performance. While the random strategy systematically fails to complete the mission, the communication-based strategy achieves a 100% success rate and completes the task in a significantly lower number of steps.
+
+This contrast demonstrates that the main difficulty of the problem does not lie in individual agent capabilities, but rather in their ability to coordinate. In the random strategy, agents operate based only on local information and independent decision-making, which leads to deadlock situations that cannot be resolved. On the contrary, the communication strategy enables agents to share information and coordinate their actions, allowing them to overcome these structural limitations.
+
+From a multi-agent systems perspective, this confirms that cooperation is essential in environments where tasks require resource aggregation and sequential transformations. Without coordination, the system may reach locally stable but globally suboptimal states, preventing task completion.
+
+#### Limitations and perspectives
+***
+
+Although the communication strategy significantly improves performance, several limitations remain in our implementation.
+
+First, agents still rely on relatively simple decision rules and limited perception (restricted to adjacent cells and local memory). More advanced strategies could be explored, such as pathfinding algorithms (e.g., A*), better task allocation mechanisms, or more sophisticated communication protocols.
+
+Second, the communication process itself could be optimized. For instance, agents could share more detailed information about waste locations or dynamically assign roles to reduce unnecessary movements and improve efficiency.
+
+Finally, our evaluation focuses primarily on the number of steps and success rate. Additional metrics, such as communication cost or energy consumption, could provide a more complete analysis of the trade-offs between coordination and efficiency.
+
+As a next step, the model could also be extended to include uncertainty (as suggested in Step 3 of the project), making the environment more realistic and requiring agents to reason under incomplete or unreliable information.
+
+### Conclusion
+***
+
+This project highlights the importance of coordination in multi-agent systems operating in constrained environments. While a simple random strategy is unable to complete the task due to blocking situations, the introduction of communication enables agents to cooperate and successfully achieve the objective.
+
+Our results show that communication is not only beneficial but necessary when tasks require interaction and resource sharing between agents. By allowing agents to exchange information and coordinate their actions, the system overcomes the limitations of purely local decision-making.
+
+Overall, this work demonstrates how relatively simple communication mechanisms can significantly improve system performance, and opens the way to more advanced strategies involving planning, optimization, and reasoning under uncertainty.
 
 ## Simulation Preview
 launch the simulation with:
 ```bash
 make solara-server
+```
+or without make : 
+```bash
+uv run python -m solara run src.run
 ```
 
 ## Contributors
