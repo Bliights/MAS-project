@@ -12,9 +12,9 @@ altair==6.0.0 \
     --hash=sha256:09ae95b53d5fe5b16987dccc785a7af8588f2dca50de1e7a156efa8a461515f8 \
     --hash=sha256:614bf5ecbe2337347b590afb111929aa9c16c9527c4887d96c9bc7f6640756b4
     # via mesa
-anyio==4.12.1 \
-    --hash=sha256:41cfcc3a4c85d3f05c932da7c26d0201ac36f72abd4435ba90d0464a3ffed703 \
-    --hash=sha256:d405828884fc140aa80a3c667b8beed277f1dfedec42ba031bd6ac3db606ab6c
+anyio==4.13.0 \
+    --hash=sha256:08b310f9e24a9594186fd75b4f73f4a4152069e3853f1ed8bfbf58369f4ad708 \
+    --hash=sha256:334b70e641fd2221c1505b3890c69882fe4a2df910cba14d97019b90b24439dc
     # via
     #   httpx
     #   jupyter-server
@@ -630,9 +630,9 @@ json5==0.13.0 \
     --hash=sha256:9a08e1dd65f6a4d4c6fa82d216cf2477349ec2346a38fd70cc11d2557499fbcc \
     --hash=sha256:b1edf8d487721c0bf64d83c28e91280781f6e21f4a797d3261c7c828d4c165bf
     # via jupyterlab-server
-jsonpointer==3.1.0 \
-    --hash=sha256:f82aa0f745001f169b96473348370b43c3f581446889c41c807bab1db11c8e7b \
-    --hash=sha256:f9b39abd59ba8c1de8a4ff16141605d2a8dacc4dd6cf399672cf237bfe47c211
+jsonpointer==3.1.1 \
+    --hash=sha256:0b801c7db33a904024f6004d526dcc53bbb8a4a0f4e32bfd10beadf60adf1900 \
+    --hash=sha256:8ff8b95779d071ba472cf5bc913028df06031797532f08a7d5b602d8b2a488ca
     # via jsonschema
 jsonschema==4.26.0 \
     --hash=sha256:0c26707e2efad8aa1bfc5b7ce170f3fccc2e4918ff85989ba9ffa9facb2be326 \
@@ -939,9 +939,9 @@ myst-parser==5.0.0 \
     # via
     #   mesa
     #   myst-nb
-narwhals==2.18.0 \
-    --hash=sha256:1de5cee338bc17c338c6278df2c38c0dd4290499fcf70d75e0a51d5f22a6e960 \
-    --hash=sha256:68378155ee706ac9c5b25868ef62ecddd62947b6df7801a0a156bc0a615d2d0d
+narwhals==2.18.1 \
+    --hash=sha256:652a1fcc9d432bbf114846688884c215f17eb118aa640b7419295d2f910d2a8b \
+    --hash=sha256:a0a8bb80205323851338888ba3a12b4f65d352362c8a94be591244faf36504ad
     # via altair
 nbclient==0.10.4 \
     --hash=sha256:1e54091b16e6da39e297b0ece3e10f6f29f4ac4e8ee515d29f8a7099bd6553c9 \
