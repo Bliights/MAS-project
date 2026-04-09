@@ -77,7 +77,9 @@ Here is a quick overview of simulation displays:
 ## Protocols
 In our project, communication between agents is only triggered in specific situations rather than being used continuously. More precisely, an agent initiates communication when it is carrying a piece of waste and no other waste remains available on the ground. In this context, collaboration becomes necessary to continue optimizing the process.
 
-To achieve this, the agent starts a first communication protocol by reaching out to other agents of the same type and asks whether they are also carrying waste and if they are available to engage in communication. If another agent responds positively, a communication link is established between the two. 
+To achieve this, the agent starts a first communication protocol by reaching out to other agents of the same type and asks whether they are also carrying waste and if they are available to engage in communication. If another agent responds positively, the initiating agent then proposes to establish a communication link and if this proposal is accepted, a link is created between the two agents.
+
+Furthermore, it's important to note that a cooldown mechanism is introduced to prevent agents from repeatedly broadcasting messages in situations where an odd number of agents are carrying waste but none is available on the ground, thereby avoiding unnecessary communication spam from the agent left without a partner.
 
 The diagram below illustrates this initial communication phase:
 
