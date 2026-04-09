@@ -1109,7 +1109,11 @@ class RedRobot(BaseRobot):
 
         # If on a tile with a waste
         for w in tile.wastes:
-            if w.type in self.allowed_pick and current_pos != self.target_position:
+            if (
+                w.type in self.allowed_pick
+                and current_pos != self.target_position
+                and tile.zone != Z1
+            ):
                 return Action(ActionType.PICK, {"type": w.type})
 
         if current_pos == self.start_position:

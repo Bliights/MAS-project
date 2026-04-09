@@ -531,5 +531,5 @@ page = SolaraViz(
         distance_plot,
     ],
     model_params=model_params,
-    name="Robot Mission - Simple Init",
+    name="SMA - Robot Mission",
 )
